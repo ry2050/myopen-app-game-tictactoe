@@ -329,7 +329,7 @@ class AboutPage extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const SelectableText(
-            'https://github.com/yourname/your-repo',
+            'https://github.com/ry2050/myopen-app-game-tictactoe',
           ),
           const SizedBox(height: 16),
           Text(
@@ -347,7 +347,7 @@ class AboutPage extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const SelectableText(
-            'https://www.youtube.com/@your-channel',
+            'https://www.youtube.com/@CodeTo2050',
           ),
           const SizedBox(height: 24),
           Text(
