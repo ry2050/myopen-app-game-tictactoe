@@ -1,6 +1,38 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+const String _githubRepoUrl = 'https://github.com/ry2050/myopen-app-game-tictactoe';
+const String _youtubeVideoUrl = 'https://www.youtube.com/watch?v=your-video-id';
+const String _youtubeChannelUrl = 'https://www.youtube.com/@CodeTo2050';
+
+Future<void> _openExternalLink(BuildContext context, String url) async {
+  final uri = Uri.parse(url);
+  final launched = await launchUrl(
+    uri,
+    mode: LaunchMode.externalApplication,
+  );
+  if (!launched && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('無法開啟連結')),
+    );
+  }
+}
+
+Widget _linkText(BuildContext context, String url) {
+  final colorScheme = Theme.of(context).colorScheme;
+  return InkWell(
+    onTap: () => _openExternalLink(context, url),
+    child: Text(
+      url,
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: colorScheme.primary,
+            decoration: TextDecoration.underline,
+          ),
+    ),
+  );
+}
 
 void main() {
   runApp(const MyApp());
@@ -280,6 +312,24 @@ class _MyHomePageState extends State<MyHomePage> {
             const SizedBox(height: 12),
             SizedBox(
               height: 48,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  OutlinedButton(
+                    onPressed: () => _openExternalLink(context, _githubRepoUrl),
+                    child: const Text('GitHub Repo'),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton(
+                    onPressed: () => _openExternalLink(context, _youtubeVideoUrl),
+                    child: const Text('YouTube 影片'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 48,
               child: Center(
                 child: Visibility(
                   visible: _winner.isNotEmpty,
@@ -328,27 +378,21 @@ class AboutPage extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
-          const SelectableText(
-            'https://github.com/ry2050/myopen-app-game-tictactoe',
-          ),
+          _linkText(context, _githubRepoUrl),
           const SizedBox(height: 16),
           Text(
             'YouTube 示範影片',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
-          const SelectableText(
-            'https://www.youtube.com/watch?v=your-video-id',
-          ),
+          _linkText(context, _youtubeVideoUrl),
           const SizedBox(height: 16),
           Text(
             'YouTube 主頁',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
-          const SelectableText(
-            'https://www.youtube.com/@CodeTo2050',
-          ),
+          _linkText(context, _youtubeChannelUrl),
           const SizedBox(height: 24),
           Text(
             'License',
