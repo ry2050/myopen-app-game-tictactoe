@@ -1,11 +1,15 @@
 import 'dart:math';
-
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const String _githubRepoUrl = 'https://github.com/ry2050/myopen-app-game-tictactoe';
 const String _youtubeVideoUrl = 'https://www.youtube.com/watch?v=your-video-id';
 const String _youtubeChannelUrl = 'https://www.youtube.com/@CodeTo2050';
+const String _githubRepoLicenseUrl = 'https://github.com/ry2050/myopen-app-game-tictactoe?tab=MIT-1-ov-file#readme';
+const String _authorName = 'Robert Yang - Myopen.app';
+
+late PackageInfo pkgInfo;
 
 Future<void> _openExternalLink(BuildContext context, String url) async {
   final uri = Uri.parse(url);
@@ -20,12 +24,12 @@ Future<void> _openExternalLink(BuildContext context, String url) async {
   }
 }
 
-Widget _linkText(BuildContext context, String url) {
+Widget _linkText(BuildContext context, String url, {String? label}) {
   final colorScheme = Theme.of(context).colorScheme;
   return InkWell(
     onTap: () => _openExternalLink(context, url),
     child: Text(
-      url,
+      label ?? url,
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: colorScheme.primary,
             decoration: TextDecoration.underline,
@@ -34,12 +38,16 @@ Widget _linkText(BuildContext context, String url) {
   );
 }
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  pkgInfo = await PackageInfo.fromPlatform();
+
+  // 預先載入 App 版本資訊
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +56,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
       ),
-      home: const MyHomePage(),
+      home: MyHomePage(),
     );
   }
 }
@@ -205,7 +213,7 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
         actions: [
           IconButton(
-            tooltip: 'About',
+            tooltip: '關於本程式',
             icon: const Icon(Icons.info_outline),
             onPressed: () {
               Navigator.of(context).push(
@@ -356,50 +364,51 @@ class AboutPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String fullVersion = 'v${pkgInfo.version}+${pkgInfo.buildNumber}';
     return Scaffold(
       appBar: AppBar(
-        title: const Text('About'),
+        title: const Text('關於本程式'),
         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            '井字遊戲 Demo App',
+            'MyOpen.app - 井字遊戲',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 12),
           const Text(
-            '這是用 Flutter 製作的一頁式井字遊戲範例。',
+            '這是用 Flutter 程式語言開發跨 iOS / Android 的一頁式井字遊戲範例。',
           ),
           const SizedBox(height: 24),
           Text(
-            'GitHub Repository',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          _linkText(context, _githubRepoUrl),
-          const SizedBox(height: 16),
-          Text(
-            'YouTube 示範影片',
+            'YouTube 教學影片',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
           _linkText(context, _youtubeVideoUrl),
           const SizedBox(height: 16),
           Text(
-            'YouTube 主頁',
+            'GitHub 原始程式碼網址',
             style: Theme.of(context).textTheme.titleMedium,
           ),
+          const SizedBox(height: 8),
+          _linkText(context, _githubRepoUrl),
+          const SizedBox(height: 16),
+          Text(
+            'MyOpen.app - YouTube 頻道',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),          
           const SizedBox(height: 8),
           _linkText(context, _youtubeChannelUrl),
           const SizedBox(height: 24),
           Text(
-            'License',
+            '版權宣告',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
-          const Text('MIT License'),
+          _linkText(context, _githubRepoLicenseUrl, label: 'MIT License'),
           const SizedBox(height: 24),
           Text(
             '使用技術',
@@ -409,15 +418,29 @@ class AboutPage extends StatelessWidget {
           const Text('Flutter / Dart'),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               showLicensePage(
                 context: context,
                 applicationName: '井字遊戲',
-                applicationVersion: '1.0.0',
+                applicationVersion: fullVersion
               );
             },
             child: const Text('查看 Flutter 授權'),
           ),
+          const SizedBox(height: 24),
+          Text(
+            '作者',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          const Text(_authorName),
+          const SizedBox(height: 16),
+          Text(
+            '版本',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(fullVersion),
         ],
       ),
     );
