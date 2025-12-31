@@ -11,6 +11,12 @@ const String _authorName = 'Robert Yang - Myopen.app';
 
 late PackageInfo pkgInfo;
 
+enum GameMode {
+  single,
+  local,
+  online,
+}
+
 Future<void> _openExternalLink(BuildContext context, String url) async {
   final uri = Uri.parse(url);
   final launched = await launchUrl(
@@ -74,7 +80,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   String _winner = '';
   bool _isPlayerTurn = true;
-  int _level = 0;
+  int _level = 1;
+  GameMode _mode = GameMode.single;
+  String _currentPlayer = 'O';
 
   void _resetGame() {
     setState(() {
@@ -83,27 +91,48 @@ class _MyHomePageState extends State<MyHomePage> {
       }
       _winner = '';
       _isPlayerTurn = true;
+      _currentPlayer = 'O';
     });
   }
 
   void _onTapCell(int index) {
-    if (!_isPlayerTurn || _winner.isNotEmpty || _board[index].isNotEmpty) {
+    if (_winner.isNotEmpty || _board[index].isNotEmpty) {
       return;
     }
 
-    setState(() {
-      _board[index] = 'O';
-      _winner = _checkWinner();
-      if (_winner.isEmpty && _isBoardFull()) {
-        _winner = 'draw';
-      }
-      if (_winner.isEmpty) {
-        _isPlayerTurn = false;
-      }
-    });
+    if (_mode == GameMode.local) {
+      setState(() {
+        _board[index] = _currentPlayer;
+        _winner = _checkWinner();
+        if (_winner.isEmpty && _isBoardFull()) {
+          _winner = 'draw';
+        }
+        if (_winner.isEmpty) {
+          _currentPlayer = _currentPlayer == 'O' ? 'X' : 'O';
+        }
+      });
+      return;
+    }
 
-    if (_winner.isEmpty) {
-      _computerMove();
+    if (_mode == GameMode.single && !_isPlayerTurn) {
+      return;
+    }
+
+    if (_mode == GameMode.single) {
+      setState(() {
+        _board[index] = 'O';
+        _winner = _checkWinner();
+        if (_winner.isEmpty && _isBoardFull()) {
+          _winner = 'draw';
+        }
+        if (_winner.isEmpty) {
+          _isPlayerTurn = false;
+        }
+      });
+
+      if (_winner.isEmpty) {
+        _computerMove();
+      }
     }
   }
 
@@ -202,6 +231,77 @@ class _MyHomePageState extends State<MyHomePage> {
     return _isPlayerTurn ? '輪到你 (O)' : '手機回合 (X)';
   }
 
+  Widget _statusWidget(BuildContext context) {
+    final baseStyle = Theme.of(context).textTheme.headlineSmall;
+    if (_mode == GameMode.local) {
+      if (_winner == 'O') {
+        return Text('O 贏！', style: baseStyle);
+      }
+      if (_winner == 'X') {
+        return RichText(
+          text: TextSpan(
+            style: baseStyle,
+            children: [
+              TextSpan(
+                text: 'X',
+                style: baseStyle?.copyWith(color: Colors.red),
+              ),
+              const TextSpan(text: ' 贏！'),
+            ],
+          ),
+        );
+      }
+      if (_winner == 'draw') {
+        return Text('平手！', style: baseStyle);
+      }
+      if (_currentPlayer == 'O') {
+        return Text('輪到 O', style: baseStyle);
+      }
+      return RichText(
+        text: TextSpan(
+          style: baseStyle,
+          children: [
+            const TextSpan(text: '輪到 '),
+            TextSpan(
+              text: 'X',
+              style: baseStyle?.copyWith(color: Colors.red),
+            ),
+          ],
+        ),
+      );
+    }
+    return Text(_statusText(), style: baseStyle);
+  }
+
+  Future<void> _showComingSoonDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('雙人線上對戰'),
+          content: const Text('未來支援'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('知道了'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _modeLabel(GameMode mode) {
+    switch (mode) {
+      case GameMode.single:
+        return '單人手機對戰';
+      case GameMode.local:
+        return '雙人單機對戰';
+      case GameMode.online:
+        return '雙人線上對戰';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -234,48 +334,36 @@ class _MyHomePageState extends State<MyHomePage> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                OutlinedButton(
-                  onPressed: _winner.isEmpty
-                      ? () {
-                          setState(() {
-                            _level = 0;
-                          });
-                        }
-                      : null,
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor:
-                        _level == 0 ? Colors.teal.shade100 : null,
-                  ),
-                  child: const Text('亂數不思考的手機'),
-                ),
-                const SizedBox(width: 12),
-                OutlinedButton(
-                  onPressed: _winner.isEmpty
-                      ? () {
-                          setState(() {
-                            _level = 1;
-                          });
-                        }
-                      : null,
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor:
-                        _level == 1 ? Colors.teal.shade100 : null,
-                  ),
-                  child: const Text('認真思考的手機'),
-                ),
-              ],
+            DropdownButton<GameMode>(
+              value: _mode,
+              items: GameMode.values
+                  .map(
+                    (mode) => DropdownMenuItem(
+                      value: mode,
+                      child: Text(_modeLabel(mode)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (mode) async {
+                if (mode == null || mode == _mode) {
+                  return;
+                }
+                if (mode == GameMode.online) {
+                  await _showComingSoonDialog();
+                  return;
+                }
+                setState(() {
+                  _mode = mode;
+                  _level = 1;
+                });
+                _resetGame();
+              },
             ),
             const SizedBox(height: 16),
             SizedBox(
               height: 32,
               child: Center(
-                child: Text(
-                  _statusText(),
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
+                child: _statusWidget(context),
               ),
             ),
             const SizedBox(height: 12),
@@ -307,7 +395,15 @@ class _MyHomePageState extends State<MyHomePage> {
                               style: Theme.of(context)
                                   .textTheme
                                   .displayMedium
-                                  ?.copyWith(color: Colors.teal.shade900),
+                                  ?.copyWith(
+                                    color: _mode == GameMode.local
+                                        ? (_board[index] == 'X'
+                                            ? Colors.red
+                                            : _board[index] == 'O'
+                                                ? Colors.black
+                                                : Colors.teal.shade900)
+                                        : Colors.teal.shade900,
+                                  ),
                             ),
                           ),
                         ),
