@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const String _githubRepoUrl = 'https://github.com/ry2050/myopen-app-game-tictactoe';
@@ -8,6 +9,9 @@ const String _youtubeVideoUrl = 'https://www.youtube.com/watch?v=your-video-id';
 const String _youtubeChannelUrl = 'https://www.youtube.com/@CodeTo2050';
 const String _githubRepoLicenseUrl = 'https://github.com/ry2050/myopen-app-game-tictactoe?tab=MIT-1-ov-file#readme';
 const String _authorName = 'Robert Yang - Myopen.app';
+const String _prefsGameModeKey = 'game_mode';
+const String _prefsBoardSizeKey = 'board_size';
+const List<int> _boardSizes = [3, 5, 7];
 
 late PackageInfo pkgInfo;
 
@@ -48,12 +52,37 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   pkgInfo = await PackageInfo.fromPlatform();
 
+  final prefs = await SharedPreferences.getInstance();
+  final storedModeIndex = prefs.getInt(_prefsGameModeKey);
+  final storedBoardSize = prefs.getInt(_prefsBoardSizeKey);
+  final initialMode = (storedModeIndex != null &&
+          storedModeIndex >= 0 &&
+          storedModeIndex < GameMode.values.length)
+      ? GameMode.values[storedModeIndex]
+      : GameMode.single;
+  final initialBoardSize =
+      (storedBoardSize != null && _boardSizes.contains(storedBoardSize))
+          ? storedBoardSize
+          : 3;
+
   // 預先載入 App 版本資訊
-  runApp(MyApp());
+  runApp(
+    MyApp(
+      initialMode: initialMode,
+      initialBoardSize: initialBoardSize,
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
-  MyApp({super.key});
+  MyApp({
+    super.key,
+    required this.initialMode,
+    required this.initialBoardSize,
+  });
+
+  final GameMode initialMode;
+  final int initialBoardSize;
 
   @override
   Widget build(BuildContext context) {
@@ -62,37 +91,64 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
       ),
-      home: MyHomePage(),
+      home: MyHomePage(
+        initialMode: initialMode,
+        initialBoardSize: initialBoardSize,
+      ),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
+  const MyHomePage({
+    super.key,
+    required this.initialMode,
+    required this.initialBoardSize,
+  });
+
+  final GameMode initialMode;
+  final int initialBoardSize;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final List<String> _board = List.filled(9, '');
   final Random _random = Random();
 
+  late List<String> _board;
+  int _boardDimension = 3;
   String _winner = '';
   bool _isPlayerTurn = true;
   int _level = 1;
   GameMode _mode = GameMode.single;
   String _currentPlayer = 'O';
 
+  @override
+  void initState() {
+    super.initState();
+    _boardDimension = widget.initialBoardSize;
+    _mode = widget.initialMode;
+    _board = List.filled(_boardDimension * _boardDimension, '');
+  }
+
   void _resetGame() {
     setState(() {
-      for (var i = 0; i < _board.length; i++) {
-        _board[i] = '';
-      }
+      _board = List.filled(_boardDimension * _boardDimension, '');
       _winner = '';
       _isPlayerTurn = true;
       _currentPlayer = 'O';
     });
+  }
+
+  Future<void> _saveMode(GameMode mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_prefsGameModeKey, mode.index);
+  }
+
+  Future<void> _saveBoardSize(int size) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_prefsBoardSizeKey, size);
   }
 
   void _onTapCell(int index) {
@@ -196,25 +252,69 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   String _checkWinner() {
-    const lines = [
-      [0, 1, 2],
-      [3, 4, 5],
-      [6, 7, 8],
-      [0, 3, 6],
-      [1, 4, 7],
-      [2, 5, 8],
-      [0, 4, 8],
-      [2, 4, 6],
-    ];
-
-    for (final line in lines) {
-      final a = _board[line[0]];
-      final b = _board[line[1]];
-      final c = _board[line[2]];
-      if (a.isNotEmpty && a == b && b == c) {
-        return a;
+    final size = _boardDimension;
+    for (var row = 0; row < size; row++) {
+      final first = _board[row * size];
+      if (first.isEmpty) {
+        continue;
+      }
+      var match = true;
+      for (var col = 1; col < size; col++) {
+        if (_board[row * size + col] != first) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        return first;
       }
     }
+
+    for (var col = 0; col < size; col++) {
+      final first = _board[col];
+      if (first.isEmpty) {
+        continue;
+      }
+      var match = true;
+      for (var row = 1; row < size; row++) {
+        if (_board[row * size + col] != first) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        return first;
+      }
+    }
+
+    final diagStart = _board[0];
+    if (diagStart.isNotEmpty) {
+      var match = true;
+      for (var i = 1; i < size; i++) {
+        if (_board[i * size + i] != diagStart) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        return diagStart;
+      }
+    }
+
+    final antiStart = _board[size - 1];
+    if (antiStart.isNotEmpty) {
+      var match = true;
+      for (var i = 1; i < size; i++) {
+        if (_board[i * size + (size - 1 - i)] != antiStart) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        return antiStart;
+      }
+    }
+
     return '';
   }
 
@@ -302,6 +402,11 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  double _symbolFontSize(double boardSize) {
+    final cellSize = boardSize / _boardDimension;
+    return (cellSize * 0.6).clamp(20.0, 72.0);
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -329,35 +434,77 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           children: [
             const SizedBox(height: 16),
-            Text(
-              '模式',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            DropdownButton<GameMode>(
-              value: _mode,
-              items: GameMode.values
-                  .map(
-                    (mode) => DropdownMenuItem(
-                      value: mode,
-                      child: Text(_modeLabel(mode)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Column(
+                  children: [
+                    Text(
+                      '模式',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                  )
-                  .toList(),
-              onChanged: (mode) async {
-                if (mode == null || mode == _mode) {
-                  return;
-                }
-                if (mode == GameMode.online) {
-                  await _showComingSoonDialog();
-                  return;
-                }
-                setState(() {
-                  _mode = mode;
-                  _level = 1;
-                });
-                _resetGame();
-              },
+                    const SizedBox(height: 8),
+                    DropdownButton<GameMode>(
+                      value: _mode,
+                      items: GameMode.values
+                          .map(
+                            (mode) => DropdownMenuItem(
+                              value: mode,
+                              child: Text(_modeLabel(mode)),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (mode) async {
+                        if (mode == null || mode == _mode) {
+                          return;
+                        }
+                        if (mode == GameMode.online) {
+                          await _showComingSoonDialog();
+                          return;
+                        }
+                        setState(() {
+                          _mode = mode;
+                          _level = 1;
+                        });
+                        await _saveMode(mode);
+                        _resetGame();
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 24),
+                Column(
+                  children: [
+                    Text(
+                      '棋盤',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButton<int>(
+                      value: _boardDimension,
+                      items: _boardSizes
+                          .map(
+                            (size) => DropdownMenuItem(
+                              value: size,
+                              child: Text('${size}x$size'),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (size) {
+                        if (size == null || size == _boardDimension) {
+                          return;
+                        }
+                        setState(() {
+                          _boardDimension = size;
+                          _level = 1;
+                        });
+                        _saveBoardSize(size);
+                        _resetGame();
+                      },
+                    ),
+                  ],
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -374,11 +521,11 @@ class _MyHomePageState extends State<MyHomePage> {
                   height: boardSize.toDouble(),
                   child: GridView.builder(
                     gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
+                        SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: _boardDimension,
                     ),
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: 9,
+                    itemCount: _board.length,
                     itemBuilder: (context, index) {
                       return GestureDetector(
                         onTap: () => _onTapCell(index),
@@ -396,6 +543,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                   .textTheme
                                   .displayMedium
                                   ?.copyWith(
+                                    fontSize: _symbolFontSize(boardSize.toDouble()),
                                     color: _mode == GameMode.local
                                         ? (_board[index] == 'X'
                                             ? Colors.red
