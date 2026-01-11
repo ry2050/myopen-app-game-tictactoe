@@ -123,4 +123,5 @@ app.*.symbols
 .vscode/
 .metadata
 lib/l10n/generated/*
-
+.DS_Store
+build_cross.sh
