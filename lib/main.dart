@@ -4,7 +4,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-const String _githubRepoUrl = 'https://github.com/ry2050/myopen-app-game-tictactoe';
+const String _githubRepoUrl = 'https://github.com/ry2050/myopen-tictactoe';
 const String _youtubeVideoUrl = 'https://www.youtube.com/watch?v=your-video-id';
 const String _youtubeChannelUrl = 'https://www.youtube.com/@CodeTo2050';
 const String _githubRepoLicenseUrl = 'https://github.com/ry2050/myopen-app-game-tictactoe?tab=MIT-1-ov-file#readme';
